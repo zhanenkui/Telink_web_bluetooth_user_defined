@@ -1,0 +1,362 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User defined Bluetooth configuration</title>
+
+    <style>
+      
+      body {
+        background-color:#072b44;
+        display: flex;
+        flex-direction: row;
+      }
+      .leftPane { width: calc(480px - 3em);}
+      .leftPane > div { padding-left: 2em; padding-top: 1.2em;}
+      .section-title:first-child {
+        padding-top: 1em;
+      }
+      .section-title {
+        font-size: 1.5em;
+        color: #2196f3;
+      }
+      .sub-section-title {
+        
+        color: #2196f3;
+        text-transform: uppercase;
+        font-weight: bold;
+        font-size: 1em;
+      }
+      #connect {
+        width: 110px;
+        height: 60px;
+        float:left;
+        margin-right: 40px;
+        background: #b8bec0;
+        text-align:center;
+        font-size: 1.3em;
+        line-height: 20px;
+        position: relative;
+        -moz-border-radius: 12px;
+        -webkit-border-radius: 12px;
+        border-radius: 12px;
+        cursor:pointer;
+      }
+      #disconnect {
+        width: 115px;
+        height: 60px;
+        float:left;
+        background: #b8bec0;
+        text-align:center;
+        font-size: 1.3em;
+        line-height: 20px;
+        position: relative;
+        -moz-border-radius: 12px;
+        -webkit-border-radius: 12px;
+        border-radius: 34px;
+        cursor:pointer;
+      }     
+    </style>
+  </head>
+  <body>
+    <div class="leftPane">
+      <div class="section-title">
+        User defined Bluetooth configuration
+      </div>
+
+      <div class="sub-section-title">Device UUID info</div>
+      <div>
+        <p style="color: white;">Enter a name prefix to filter</p>
+        <input type="text" id="device_name" style="width:260px; height:23px;background-color: #dddad4;"placeholder="please input device name prefix">
+      </div>
+
+      <div>
+        <p style="color: white;">Service UUID</p>
+        <input type="text" id="ble_service" style="width:260px; height:23px;background-color: #dddad4;"placeholder="please input Service UUID">
+      </div>
+
+      <div>
+        <p style="color: white;">Characteristic UUID</p>
+        <input type="text" id="ble_character" style="width:260px; height:23px;background-color: #dddad4;"placeholder="please input charcteristic UUID">
+      </div>
+      <div>
+        <div>
+          <label style="background-color: #dddad4;width: 20%;margin-right: 25px;">
+            <input type="checkbox" id="write_btn" name="WT" style="cursor:pointer;" onclick="W_checked(this)">
+            <span class="mdl-checkbox__label">Write</span>
+          </label>
+          <label style="background-color: #dddad4;width: 20%;margin-right: 10px;">
+            <input type="checkbox" id="write_rp_btn" name="WTRP" style="cursor:pointer;" onclick="Write_response(this)">
+            <span class="mdl-checkbox__label">Write response</span>
+          </label>
+        </div>
+        <br>
+        <div>
+          <label style="background-color: #dddad4;width: 20%;margin-right: 20px;">
+            <input type="checkbox" id="notify_btn" style="cursor:pointer;" onclick="N_checked(this)">
+            <span class="mdl-checkbox__label">Notify</span>
+          </label>
+          <label style="background-color: #dddad4;">
+            <input type="checkbox" id="Indicate_btn" name="WT" style="cursor:pointer;" onclick="I_checked(this)">
+            <span class="mdl-checkbox__label">Indicate</span>
+          </label>
+        </div>
+
+      </div>
+      <div class="sub-section-title">scan bluetooth</div>
+      <div>
+        <div>
+        <label style="background-color: #dddad4;">
+          <input type="checkbox" id="all_device" style="cursor:pointer;">
+          <span class="mdl-checkbox__label">Scan All Advertisements Device</span>
+        </label>
+        </div>
+        <br>
+        <div>
+        <button id="connect" onclick="clickConnect()" style="background-color: hsl(197, 81%, 41%);;">connect bluetooth</button>
+        <button id="disconnect" onclick="device_disconnect()" style="background-color: hsl(197, 81%, 41%);;">disconnect</button>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <br><br><br><br>
+      <div>
+        <input type="text" id="textdata" style="width:250px; height:23px;background-color: #dddad4;">
+        <button id="send_btn" onclick="send_command()" style="width: 60px; height: 28px;background-color: hsl(197, 81%, 41%);cursor:pointer;">Send</button>
+      </div>
+      <hr>
+      <div style="float: left;margin-right: 20px;">
+        <p style="margin-top: 40px;color: floralwhite;">mutual information </p>
+        <textarea id="log" cols="60" rows="25" readonly="readonly" style="background-color: hsl(0, 0%, 5%);color: hsl(130, 87%, 39%);font-size: 1.2em;"></textarea> 
+      </div>
+      <div style="float: left;">
+        <p id="p_notify" style="margin-top: 40px;color: floralwhite;">Receive Data From</p>
+        <textarea id="log_notify" cols="60" rows="25" readonly="readonly" style="background-color: hsl(0, 0%, 5%);color: rgb(234, 238, 234);font-size: 1.2em;"></textarea>
+      </div>
+    </div>
+
+  <script src="set_info.js"></script>
+  </body>
+</html>
+
+<script>
+
+var scan_value = 0;
+var ble_name,ble_service,ble_character;
+var write_judge = 0,all_status = 0;
+var options = {};
+var ServiceMain = null;
+var nitifiyCharTemp = null;
+
+function isnull(val) {
+  var str = val.replace(/(^\s*)|(\s*$)/g, '');//去除空格;
+  if (str == '' || str == undefined || str == null) {
+    return 0;
+    //console.log('空')
+  } else {
+    return 1;
+    //console.log('非空');
+  }
+}
+
+function Enter_data() {
+    let serviceUuid = document.getElementById("ble_service").value;
+    console.log(serviceUuid);
+    if (serviceUuid.startsWith('0x')) {
+        serviceUuid = parseInt(serviceUuid);
+    }
+    ble_service = serviceUuid;
+    //ble_service = 6153;
+
+    let characteristicUuid = document.getElementById("ble_character").value;
+    if (characteristicUuid.startsWith('0x')) {
+        characteristicUuid = parseInt(characteristicUuid);
+    }
+    ble_character = characteristicUuid;
+    //ble_character = 10780;
+
+    ble_name = document.getElementById("device_name").value;
+    if (document.getElementById("all_device").checked) {
+      options = {
+        acceptAllDevices: true,
+        optionalServices: [ble_service]
+      };
+    } else {
+      options = {
+        filters: [{
+          namePrefix: ble_name
+      }],
+        optionalServices: [ble_service]
+      };
+
+    }
+}
+
+function clickConnect(){
+    Enter_data();
+    user_custom.request(ble_service,ble_character,options).then(connt => {
+        log("Bluetooth connection successful");
+      })
+      .catch(error => {
+        log('Argh! ' + error);
+      });
+}
+
+function device_disconnect(){
+    user_custom.disconnect();
+}
+
+function log(logTXT) {
+    let time = new Date().toLocaleTimeString("de-DE");
+    let logString = time + ": > " + logTXT;
+    document.getElementById("log").innerHTML += logString + "\n";
+}
+
+function log_notify(logTXT) {
+    let time = new Date().toLocaleTimeString("de-DE");
+    let logString = time + ": > " + logTXT;
+    document.getElementById("log_notify").innerHTML += logString + "\n";
+}
+
+function start_notify() {
+  user_custom.gattserve.getPrimaryService(user_custom.custom_service)
+      .then(service => {
+        console.log("found custom service");
+        ServiceMain = service;
+        return ServiceMain.getCharacteristic(user_custom.custom_character);
+      }).then(characteristic => {
+        console.log('Found custom characteristic');
+        nitifiyCharTemp = characteristic; 
+        return nitifiyCharTemp.startNotifications()
+        .then(() => {
+          nitifiyCharTemp.addEventListener('characteristicvaluechanged', event => {
+            var souvalue = event.target.value;
+            var ntvalue = bytesToHex(souvalue.buffer);
+            log_notify("Data: " + ntvalue);
+            author_log();
+            document.getElementById("p_notify").innerHTML = "Receive Data From: [ " + nitifiyCharTemp.uuid + " ]";
+          });
+        });
+      }).catch(error => console.log(error));
+  }
+
+function send_command(){
+  let command_value = document.getElementById("textdata").value;
+  if(write_judge == 1){
+    CharSend_command(command_value).then(function(result){
+      log("send command succese");
+    })
+    .catch(function(err) {
+        log(err);
+    });
+  }
+  else{
+    log("Please check the left check box to write properties");
+  }
+}
+
+function W_checked(checkbox){
+    if(user_custom.getcharwrite == true){
+      if (checkbox.checked == true){
+        write_judge = 1;
+      }else{
+        write_judge = 0;
+      }
+    }
+    else{
+      log("This characteristic has no write properties");
+      checkbox.checked=false;
+    }
+}
+
+function Write_response(checkbox){
+  if(user_custom.getcharwrite_rp == true){
+      if (checkbox.checked == true){
+        write_judge = 1;
+      }else{
+        write_judge = 0;
+      }
+    }
+    else{
+      log("This characteristic has no write response properties");
+      checkbox.checked=false;
+    }
+}
+
+function I_checked(checkbox){
+  if(user_custom.getcharindicate == true){
+    if (checkbox.checked == true){
+      start_notify();
+    }else{
+      if (nitifiyCharTemp) {
+        nitifiyCharTemp.stopNotifications()
+      .then(_ => {
+        log('> Stop receiving data');
+        nitifiyCharTemp.removeEventListener('characteristicvaluechanged',event);
+      })
+      .catch(error => {
+        log('Argh! ' + error);
+      });
+      }
+    }
+  }
+  else{
+    log("This characteristic has no indicate properties");
+    checkbox.checked=false;
+  }
+}
+
+function N_checked(checkbox){
+  if(user_custom.getcharnotify == true){
+    if (checkbox.checked == true){
+      log("start notify");
+      start_notify();
+    }else{
+      if (nitifiyCharTemp) {
+        nitifiyCharTemp.stopNotifications()
+      .then(_ => {
+        log('> Notifications stopped');
+        nitifiyCharTemp.removeEventListener('characteristicvaluechanged',event);
+      })
+      .catch(error => {
+        log('Argh! ' + error);
+      });
+      }
+    }
+  }
+  else{
+    log("This characteristic has no notify properties");
+    checkbox.checked=false;
+  }
+}
+
+function bytesToHex(data) {
+    return new Uint8Array(data).reduce(function(memo, i) {
+        return memo + ("0" + i.toString(16)).slice(-2);
+    }, "");
+}
+
+function author_log(){
+  var obj = document.getElementById("log_notify");
+  obj.scrollTop = obj.scrollHeight;
+}
+
+var CharSend_command = function(data) {
+    return new Promise(function(resolve, reject) {
+        console.log("send command: " + data);
+        user_custom.getCharacteristic.writeValueWithoutResponse(hexToBytes(data)).then(function(character) {
+            resolve("ok");
+        }).catch(function(err) {
+            reject("some error while sending char data");
+        });
+    });
+  }
+
+function hexToBytes(hex) {
+  for (var bytes = [], c = 0; c < hex.length; c += 2)
+    bytes.push(parseInt(hex.substr(c, 2), 16));
+  return new Uint8Array(bytes);
+}
+</script>
